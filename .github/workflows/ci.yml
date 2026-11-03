@@ -1,0 +1,29 @@
+name: CI - Build & Unit Tests
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Static Analysis & Build Tools
+        run: sudo apt-get update && sudo apt-get install -y cmake gcc cppcheck
+
+      - name: Run Cppcheck Static Analysis
+        run: cppcheck --enable=warning,performance,portability --error-exitcode=1 -I include src/
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Compile Firmware Library & Test Suite
+        run: cmake --build build --verbose
+
+      - name: Execute Unit Tests (CTest)
+        run: ctest --test-dir build --output-on-failure --verbose
