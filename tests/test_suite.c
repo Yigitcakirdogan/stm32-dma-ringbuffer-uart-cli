@@ -109,6 +109,7 @@ static void test_dma_circular_idle_ingestion(void)
     };
 
     TEST_ASSERT(uart_dma_init(&huart, &ops));
+    uart_dma_stm32f4_hw_init(&huart, 42000000UL, 115200UL);
 
     /* Simulate DMA writing 10 bytes at end of 256-byte circular buffer (pos 250..4) */
     huart.last_dma_rx_pos = 250U;
@@ -144,6 +145,7 @@ static void test_cli_command_execution(void)
     mock_reset_called = false;
 
     TEST_ASSERT(uart_dma_init(&huart, &ops));
+    uart_dma_stm32f4_hw_init(&huart, 42000000UL, 115200UL);
     TEST_ASSERT(embedded_cli_init(&cli, &huart, "mcu> "));
 
     /* Simulate receiving "gpio A 5 1\r" via DMA RX ring buffer */
