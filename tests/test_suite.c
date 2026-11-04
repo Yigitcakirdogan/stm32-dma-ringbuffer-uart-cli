@@ -1,7 +1,3 @@
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-#include <assert.h>
 /**
  * @file    test_suite.c
  * @author  Yigit Cakirdogan
@@ -9,12 +5,20 @@
  *          wrap-around ingestion, and deterministic CLI command dispatch.
  */
 
-#include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "ring_buffer.h"
 #include "uart_dma_driver.h"
 #include "embedded_cli.h"
+
+#define TEST_ASSERT(cond)                                                          \
+    do {                                                                           \
+        if (!(cond)) {                                                             \
+            fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__, #cond);      \
+            exit(EXIT_FAILURE);                                                    \
+        }                                                                          \
+    } while (0)
 
 /* Simulated Hardware State for Unit Tests */
 static size_t   mock_dma_ndtr     = UART_DMA_RX_BUF_SIZE;
@@ -63,33 +67,33 @@ static void test_ring_buffer_wrap_and_overflow(void)
     ring_buffer_t rb;
 
     /* Non-power-of-two capacity must be rejected */
-    assert(!ring_buffer_init(&rb, storage, 15U));
-    assert(ring_buffer_init(&rb, storage, 16U));
-    assert(ring_buffer_capacity(&rb) == 15U);
+    TEST_ASSERT(!ring_buffer_init(&rb, storage, 15U));
+    TEST_ASSERT(ring_buffer_init(&rb, storage, 16U));
+    TEST_ASSERT(ring_buffer_capacity(&rb) == 15U);
 
     /* Fill 12 bytes, read 10 bytes to force index wrap-around on next write */
     const uint8_t pattern1[12] = "0123456789AB";
-    assert(ring_buffer_write(&rb, pattern1, 12U) == 12U);
+    TEST_ASSERT(ring_buffer_write(&rb, pattern1, 12U) == 12U);
 
     uint8_t out[16] = {0};
-    assert(ring_buffer_read(&rb, out, 10U) == 10U);
-    assert(memcmp(out, "0123456789", 10U) == 0);
-    assert(ring_buffer_available(&rb) == 2U);
+    TEST_ASSERT(ring_buffer_read(&rb, out, 10U) == 10U);
+    TEST_ASSERT(memcmp(out, "0123456789", 10U) == 0);
+    TEST_ASSERT(ring_buffer_available(&rb) == 2U);
 
     /* Write 13 bytes across the wrap-around boundary (fills to max capacity 15) */
     const uint8_t pattern2[13] = "CDEFGHIJKLMNO";
-    assert(ring_buffer_write(&rb, pattern2, 13U) == 13U);
-    assert(ring_buffer_available(&rb) == 15U);
-    assert(ring_buffer_free_space(&rb) == 0U);
+    TEST_ASSERT(ring_buffer_write(&rb, pattern2, 13U) == 13U);
+    TEST_ASSERT(ring_buffer_available(&rb) == 15U);
+    TEST_ASSERT(ring_buffer_free_space(&rb) == 0U);
 
     /* Extra byte must fail and increment overflow counter */
-    assert(!ring_buffer_put(&rb, 'Z'));
-    assert(rb.overflow_count == 1U);
-    assert(rb.high_watermark == 15U);
+    TEST_ASSERT(!ring_buffer_put(&rb, 'Z'));
+    TEST_ASSERT(rb.overflow_count == 1U);
+    TEST_ASSERT(rb.high_watermark == 15U);
 
     /* Read all 15 bytes and verify exact FIFO ordering across wrap boundary */
-    assert(ring_buffer_read(&rb, out, 15U) == 15U);
-    assert(memcmp(out, "ABCDEFGHIJKLMNO", 15U) == 0);
+    TEST_ASSERT(ring_buffer_read(&rb, out, 15U) == 15U);
+    TEST_ASSERT(memcmp(out, "ABCDEFGHIJKLMNO", 15U) == 0);
     printf("[PASS] test_ring_buffer_wrap_and_overflow\n");
 }
 
@@ -104,13 +108,13 @@ static void test_dma_circular_idle_ingestion(void)
         .gpio_read_pin   = mock_gpio_read
     };
 
-    assert(uart_dma_init(&huart, &ops));
+    TEST_ASSERT(uart_dma_init(&huart, &ops));
 
     /* Simulate DMA writing 10 bytes at end of 256-byte circular buffer (pos 250..4) */
     huart.last_dma_rx_pos = 250U;
     const char *burst = "HELLO_DMA!";
-    memcpy(&huart.rx_dma_buffer[250], burst, 6U); /* 250..255 */
-    memcpy(&huart.rx_dma_buffer[0], &burst[6], 4U); /* 0..3 */
+    memcpy(&huart.rx_dma_buffer[250], burst, 6U);
+    memcpy(&huart.rx_dma_buffer[0], &burst[6], 4U);
 
     /* NDTR is remaining transfers: 256 - 4 = 252 */
     mock_dma_ndtr = 252U;
@@ -118,8 +122,8 @@ static void test_dma_circular_idle_ingestion(void)
 
     char rx_out[16] = {0};
     size_t n = uart_dma_read(&huart, (uint8_t *)rx_out, sizeof(rx_out));
-    assert(n == 10U);
-    assert(memcmp(rx_out, "HELLO_DMA!", 10U) == 0);
+    TEST_ASSERT(n == 10U);
+    TEST_ASSERT(memcmp(rx_out, "HELLO_DMA!", 10U) == 0);
     printf("[PASS] test_dma_circular_idle_ingestion\n");
 }
 
@@ -135,11 +139,12 @@ static void test_cli_command_execution(void)
         .gpio_read_pin   = mock_gpio_read
     };
 
-    mock_tx_len  = 0U;
-    mock_gpio_a5 = false;
+    mock_tx_len       = 0U;
+    mock_gpio_a5      = false;
+    mock_reset_called = false;
 
-    assert(uart_dma_init(&huart, &ops));
-    assert(embedded_cli_init(&cli, &huart, "mcu> "));
+    TEST_ASSERT(uart_dma_init(&huart, &ops));
+    TEST_ASSERT(embedded_cli_init(&cli, &huart, "mcu> "));
 
     /* Simulate receiving "gpio A 5 1\r" via DMA RX ring buffer */
     const char *cmd = "gpio A 5 1\r";
@@ -147,9 +152,10 @@ static void test_cli_command_execution(void)
     embedded_cli_poll(&cli);
     uart_dma_tx_complete_isr(&huart);
 
-    assert(mock_gpio_a5 == true);
-    assert(cli.commands_executed == 1U);
-    assert(strstr(mock_tx_capture, "[GPIO] Port A Pin 5 -> SET (1)") != NULL);
+    TEST_ASSERT(mock_gpio_a5 == true);
+    TEST_ASSERT(cli.commands_executed == 1U);
+    TEST_ASSERT(strstr(mock_tx_capture, "[GPIO] Port A Pin 5 -> SET (1)") != NULL);
+    TEST_ASSERT(mock_reset_called == false);
     printf("[PASS] test_cli_command_execution\n");
 }
 
