@@ -22,4 +22,5 @@ enable_testing()
 
 add_executable(test_suite tests/test_suite.c)
 target_link_libraries(test_suite PRIVATE uart_dma_cli)
+target_compile_options(test_suite PRIVATE -Wno-unused-variable -Wno-unused-but-set-variable)
 add_test(NAME FirmwareUnitTestSuite COMMAND test_suite)
