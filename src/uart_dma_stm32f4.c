@@ -33,9 +33,9 @@ typedef struct {
     volatile uint32_t FCR;
 } dma_stream_regs_t;
 
-static usart_regs_t        sim_usart2 __attribute__((unused));
-static dma_stream_regs_t   sim_dma1_stream5 __attribute__((unused));
-static dma_stream_regs_t   sim_dma1_stream6 __attribute__((unused));
+static usart_regs_t      sim_usart2;
+static dma_stream_regs_t sim_dma1_stream5;
+static dma_stream_regs_t sim_dma1_stream6;
 
 #define USART2_BASE_PTR       (&sim_usart2)
 #define DMA1_STREAM5_BASE_PTR (&sim_dma1_stream5)
