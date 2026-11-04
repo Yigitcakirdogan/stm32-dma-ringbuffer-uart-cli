@@ -35,7 +35,7 @@ typedef struct {
 
 static usart_regs_t      sim_usart2;
 static dma_stream_regs_t sim_dma1_stream5;
-static dma_stream_regs_t sim_dma1_stream6;
+static dma_stream_regs_t sim_dma1_stream6 __attribute__((unused));
 
 #define USART2_BASE_PTR       (&sim_usart2)
 #define DMA1_STREAM5_BASE_PTR (&sim_dma1_stream5)
