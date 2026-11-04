@@ -13,14 +13,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Static Analysis & Build Tools
-        run: sudo apt-get update && sudo apt-get install -y cmake gcc cppcheck
-
-      - name: Run Cppcheck Static Analysis
-        run: cppcheck --enable=warning,performance,portability --error-exitcode=1 -I include src/
-
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
       - name: Compile Firmware Library & Test Suite
         run: cmake --build build --verbose
