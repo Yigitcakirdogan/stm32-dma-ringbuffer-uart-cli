@@ -108,6 +108,10 @@ void uart_dma_stm32f4_hw_init(uart_dma_handle_t *huart, uint32_t apb1_clock_hz, 
                                 | DMA_SxCR_TCIE
                                 | DMA_SxCR_EN;
 
+    /* Configure DMA1 Stream 6 (Channel 4) for USART2_TX */
+    DMA1_STREAM6_BASE_PTR->CR   = 0U;
+    DMA1_STREAM6_BASE_PTR->PAR  = (uint32_t)(uintptr_t)&USART2_BASE_PTR->DR;
+
     /* Configure USART2 Baudrate & Enable DMA RX/TX + IDLE Line Interrupt */
     USART2_BASE_PTR->BRR = (apb1_clock_hz + (baudrate / 2U)) / baudrate;
     USART2_BASE_PTR->CR3 = USART_CR3_DMAR | USART_CR3_DMAT;
